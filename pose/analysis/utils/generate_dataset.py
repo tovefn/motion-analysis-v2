@@ -7,29 +7,25 @@ import scipy
 from split_sequence import split_peaks_pad
 import matplotlib.pyplot as plt
 from datetime import datetime
+import csv
 
 POE_fields = ['_trunk', '_hip', '_femval', '_KMFP',
               '_fem_med_shank', '_foot']
 full_POE = ['Trunk', 'Pelvis', 'Femoral valgus', 'KMFP',
             'Femur-medial-to-shank', 'Foot pronation']
 
-poe_index = 1
-POE_lit_name = 'hip'
-data_dirs = ('healthy-SLS', 'hipp-SLS', 'marked-SLS', 'musse-SLS',
-             'shield-SLS', 'ttb-SLS')
-NAME_PATH = '/home/filipkr/Documents/xjob/motion-analysis/names/lit-names-datasets.npy'
-
-names = ['trunk_full', 'hip_full', 'femval_full',
-         'kmfp_full', 'fem_med_shank_full',
-         'foot_full']
+poe_index = 5
+start_index = [520, 519, 530, 530, 520, 518]
+start_subj = [104, 104, 104, 104, 104, 104]
+names = ['trunk_test', 'hip_test', 'femval_test',
+         'kmfp_test', 'fem_med_shank_test',
+         'foot_test']
 # names = ['trunk_consensus_train', 'hip_consensus_train', 'femval_consensus_train',
 #          'kmfp_consensus_train', 'fem_med_shank_consensus_train',
 #          'foot_consensus_train']
-# names = ['trunk_test', 'hip_test', 'femval_test',
-#          'kmfp_test', 'fem_med_shank_test',
-#          'foot_test']
-
 POE_lit_name = names[poe_index]
+data_dirs = ('healthy-SLS', 'hipp-SLS', 'marked-SLS', 'musse-SLS',
+             'shield-SLS', 'ttb-SLS')
 
 # KPTS = np.array([[6, 0], [12, 0], [14, 0], [16, 0]])
 # KPTS = np.array([[5, 0], [6, 0], [11, 1], [12, 1], [20, 0]])
@@ -68,9 +64,7 @@ KPTS = np.array([[5, 1], [6, 1], [14, 1], [16, 1], [20, 1], [21, 1]])
 ANGLES = [[12, 14], [14, 16], [14, 20], [16, 20], [21, 22], [20, 22], [16, 22]]
 DIFFS = np.array([[[12,0], [20,0]], [[14, 0], [20, 0]]])
 
-KPTS = np.array([[6, 1], [14, 1], [20, 1], [21, 1]])                 
-ANGLES = [[14, 16], [14, 20], [20, 22], [16, 22]]
-DIFFS = np.array([[[14, 0], [20, 0]]])
+
 
 # KPTS =np.array([[6, 1],[12,  0], [14,  0]])
 # ANGLES = [[14,  16]]
@@ -92,36 +86,6 @@ DIFFS = np.array([[[14, 0], [20, 0]]])
 # ANGLES = [[16, 20]]
 # KPTS = np.array([[6, 1], [12, 0], [14, 0]])
 
-KPTS = np.array([[5, 0], [6, 0], [6, 1], [11, 0], [11, 1], [12, 0]])
-DIFFS = np.array([[[12, 0], [14, 0]], [[14, 0], [20, 0]]])
-ANGLES = []
-
-KPTS = np.array([[5, 1], [12, 1]])
-ANGLES = [[16, 20]]
-DIFFS = np.array([[[12, 0], [14, 0]], [[14, 0], [16, 0]], [[14, 0], [20, 0]]])
-
-KPTS = np.array([[5, 0], [5, 1], [11, 1], [12, 1], [14, 0], [14, 1], [20, 1],
-                 [21, 1], [22, 1]])
-ANGLES = [[12, 14], [14, 16], [14, 20], [16, 20]]
-DIFFS = np.array([[[12, 0], [14, 0]], [[14, 0], [16, 0]], [[12,0], [20,0]],
-                  [[14, 0], [20, 0]]])
-
-
-KPTS = np.array([[6, 0], [6, 1], [11, 1], [16, 1]])
-ANGLES = [[12, 14]]
-DIFFS = np.array([[[14,0], [16,0]], [[14, 0], [20, 0]]])
-# DIFFS = np.array([[[14, 0], [20, 0]]])
-# DIFFS = np.array([[[12, 0], [14, 0]], [[14, 0], [16, 0]],[[12,0],[20,0]],
-#                   [[14, 0], [20, 0]]])
-# DIFFS = np.array([[[14, 0], [20, 0]]])
-# DIFFS = np.array([[[12,0],[14,0]]])
-
-# KPTS = np.array([[6, 1], [12, 0], [14, 0]])
-# ANGLES = [[14, 16]]
-# DIFFS = np.array([[]])
-
-# if len(KPTS) < 1:
-#     KPTS =[[]]
 
 if POE_fields[poe_index] == '_trunk':
     KPTS = np.array([[5, 0], [6, 0], [6, 1], [11, 0], [11, 1], [12, 0]])
@@ -195,7 +159,10 @@ def resample(x, factor, kind='linear'):
 def calc_angle(poses, kpts):
     angles = np.zeros((poses.shape[0], len(kpts)))
 
-    max_idx = np.where(poses[:, 0, 0] < -900)[0][0]
+    try:
+        max_idx = np.where(poses[:, 0, 0] < -900)[0][0]
+    except IndexError:
+        max_idx = len(poses[:, 0, 0])
 
     for i in range(len(kpts)):
         angles[:max_idx, i] = np.arctan2(poses[:max_idx, kpts[i][0], 1] -
@@ -209,7 +176,11 @@ def calc_angle(poses, kpts):
 
 
 def calc_diffs(poses, kpts):
-    max_idx = np.where(poses[:, 0, 0] < -900)[0][0]
+    try:
+        max_idx = np.where(poses[:, 0, 0] < -900)[0][0]
+    except:
+        max_idx = len(poses[:, 0, 0])
+
     diffs = np.zeros((poses.shape[0], kpts.shape[0]))
 
     for i in range(kpts.shape[0]):
@@ -226,53 +197,95 @@ def get_new_vids(path, dataset, dataset_labels, k, poe,
 
     print(full_POE[poe_index])
 
+    q = 0
+    ind_map = {}
 
-    labelfile = np.genfromtxt(os.path.join(path, 'new-vids/new-labels.csv'),
-                            delimiter=',', dtype=object)
+    with open(os.path.join(path, 'new-labels.csv')) as f:
+        data = list(csv.reader(f, delimiter=','))
 
-    for file_name in os.listdir(os.path.join(path, 'new-vids')):
+    # print(data)
+    labelfile = np.array(data)
+    # print(data.shape)
+
+
+    # labelfile = np.genfromtxt(os.path.join(path, 'new-labels.csv'),
+    #                         delimiter=',', dtype=object)
+
+    for file_name in os.listdir(path):
         if file_name.endswith('.npy'):
             if args.debug:
                 print('new vid')
                 print(file_name)
 
             fps = int(file_name.split('-')[-1].split('.')[0])
-            orig_filename = file_name.split('/')[0].replace(f'-{fps}.', '.mp4')
+            orig_filename = file_name.split('/')[0].replace(f'-{fps}.npy', '.mp4')
             leg = 'R' if '_R_' in orig_filename else 'L'
-
+            # print(file_name)
+            # print(fps)
+            # print(orig_filename)
+            # print(leg)
             data = np.load(os.path.join(path, file_name))
             data = resample(data, fps / args.rate)
             b, a = scipy.signal.butter(4, 0.2)
             data = scipy.signal.filtfilt(b, a, data, axis=0)
             # plt.plot(data[:,5,1])
             data = normalize_coords(data)
-
+            meta = orig_filename.split('.')[0].split('_')
+            rep = meta[-1]
+            ind = meta.index(leg)
+            key = '_'.join(meta[:ind])
+            print(key)
+            try:
+                subj_ind = ind_map[key]
+            except KeyError:
+                ind_map[key] = q
+                subj_ind = q
+                q += 1
+            # print(labelfile[:,1:])
+            # print(labelfile.shape)
+            # print([orig_filename, full_POE[poe_index]])
             subj_ind = np.where(labelfile[:,[1,2]] ==
                                 [orig_filename, full_POE[poe_index]])[0][0]
+            print(subj_ind)
             label = int(labelfile[subj_ind, 3])
 
             angles = calc_angle(data, ANGLES)
+
+            # print(data.shape)
+            # print(KPTS)
+            # print(ANGLES)
             if KPTS.size > 0:
-                kpts = data[:, KPTS[:, 0], KPTS[:, 1]].T
+                kpts = data[:, KPTS[:, 0], KPTS[:, 1]]
             else:
                 kpts = np.moveaxis(data[:, [], :], 1, 0)
                 kpts = kpts.reshape(kpts.shape[0], -1)
 
+            # print(angles.shape)
+            # print(kpts.shape)
             feats = np.append(kpts, angles, axis=-1)
             if DIFFS.size > 3:
                 diffs = calc_diffs(data, DIFFS)
                 feats = np.append(feats, diffs, axis=-1)
 
+            pad = 200 - feats.shape[0]
+            # print(pad)
+            # print(feats.shape)
+            feats = np.pad(feats, ((0, pad), (0, 0)), 'constant',
+                           constant_values=-1000)
+            # print(feats.shape)
+            # print(feats)
+            # print(feats[:,0])
+            # assert False
+
             dataset.append(feats)
             dataset_labels.append(label)
 
             if ifile is not None:
-                ifile.write('{},{},{},{},{},{}\n'.format(k+1+subj_ind,
-                                                         k+1+subj_ind, 0,
+                ifile.write('{},{},{},{},{},{}\n'.format(k, subj_ind, rep,
                                                          subj_ind, leg,
                                                          'new-vids'))
 
-
+                k += 1
 
     return dataset, dataset_labels, ifile
 
@@ -283,146 +296,116 @@ def main(args):
     pad = 4 * args.rate
 
     if args.info_file:
-        # lit_names = np.load(NAME_PATH, allow_pickle=True)
-        # lit_idx = np.random.choice(lit_names.size)
-        # lit_name = lit_names[lit_idx]
         lit_name = POE_lit_name
         coco_data = args.root.split('poses/')[1]
 
-        # lit_name = 'Jean-Paul-Sartre'
         print('The lucky laureate is {}!'.format(lit_name))
 
-        save_path = args.save_path.split('.')[0] + 'data_' + lit_name + '.npz'
-
+        save_path = os.path.join(args.save_path.split('.')[0], 'data_' + lit_name + '.npz')
+        # print(save_path)
+        # print(args.save_path)
         ifile = open(save_path.split('.')[0] + '-info.txt', 'w')
-        ifile.write('Dataset {}, created {}, {},,,\n'.format(
+        ifile.write('Dataset {}, created {}, {},,,,\n'.format(
             lit_name, datetime.date(datetime.now()),
             str(datetime.time(datetime.now())).split('.')[0]))
-        ifile.write(f'COCO dataset used: {coco_data},,,,,\n')
-        ifile.write('Action:, {},,,,\n'.format(POE_field))
-        ifile.write('FPS:, {},,,,\n'.format(args.rate))
-        ifile.write('Keypoints:, {},,,,\n'.format(str(KPTS).replace(',', ' ')))
-        ifile.write('Angles:, {},,,,\n \n'.format(
+        ifile.write(f'COCO dataset used: {coco_data},,,,,,\n')
+        ifile.write('Action:, {},,,,,\n'.format(POE_field))
+        ifile.write('FPS:, {},,,,,\n'.format(args.rate))
+        ifile.write('Keypoints:, {},,,,,\n'.format(str(KPTS).replace(',', ' ')))
+        ifile.write('Angles:, {},,,,,\n \n'.format(
             str(ANGLES).replace(',', ' ')))
-        ifile.write('Diffs:, {},,,,\n'.format(str(DIFFS).replace(',', ' ')))
+        ifile.write('Diffs:, {},,,,,\n'.format(str(DIFFS).replace(',', ' ')))
         ifile.write(
-            'index,global subject,repetition,subject in cohort,leg,cohort\n')
+            'index,global subject,repetition,subject in cohort,leg,cohort,full\n')
 
     dataset_labels = []
     dataset = []
-    k = 0
+    k = start_index[poe_index]
     glob_subject_nbr = 0
-    for directory in os.listdir(args.root):
-        if directory in data_dirs:
-            cohort = directory.split('-')[0]
-            dir_path = os.path.join(args.root, directory)
-            label_file = os.path.join(dir_path, cohort + '-labels.csv')
-            labels = pd.read_csv(label_file, delimiter=',')
-            for file_name in os.listdir(dir_path):
-                if file_name.endswith('.npy'):
-                    if args.debug:
-                        print(cohort)
-                        print(file_name)
-                    subject = int(file_name.split('-')[0])
-                    action = file_name.split('-')[1]
-                    fps = int(file_name.split('.')[0].split('-')[3])
-                    leg = str(file_name.split('-')[2])
-                    label_ind = np.where(labels.values[:, 0] == subject)
-                    for idx in label_ind[0]:
-                        if str(labels.values[idx, 1]).endswith((leg, '0.0',
-                                                                '1.0', '2.0')):
-                            data = np.load(os.path.join(dir_path, file_name))
-                            # idx ???
 
-                            data = resample(data, fps / args.rate)
-                            # plt.plot(data[:,5,1])
-                            # plt.show()
-                            b, a = scipy.signal.butter(4, 0.2)
-                            data = scipy.signal.filtfilt(b, a, data, axis=0)
-                            # plt.plot(data[:,5,1])
-                            data = normalize_coords(data)
-                            # plt.plot(data[:,5,1])
-                            # plt.show()
-                            # if cohort + file_name == 'hipp12-SLS-L-25.npy':
-                            #     motions, _ = split_peaks_pad(data, args.rate,
-                            #                                  xtra_samp=pad,
-                            #                                  joint=5,
-                            #                                  debug=args.debug,
-                            #                                  prom=0.022)
-                            # print(motions.shape)
-                            if cohort + file_name in lower_peaks:
-                                motions, _ = split_peaks_pad(data, args.rate,
-                                                             xtra_samp=pad,
-                                                             joint=5,
-                                                             prom=0.02,
-                                                             debug=args.debug)
-                            else:
-                                motions, _ = split_peaks_pad(data, args.rate,
-                                                             xtra_samp=pad,
-                                                             joint=5)
+    q = start_subj[poe_index]
+    ind_map = {}
+    path = args.root
 
-                            if args.debug:
-                                print('data shape: {}'.format(data.shape))
-                                print('motion shape: {}'.format(motions.shape))
+    with open(os.path.join(path, 'new-labels.csv')) as f:
+        data = list(csv.reader(f, delimiter=','))
 
-                            # motions = normalize_coords_motions(motions)
-                            for i in range(motions.shape[0]):
-                                # print(motions[i, :, 0, 0])
-                                max_idx = np.where(
-                                    motions[i, :, 0, 0] < -900)[0]
-                                max_idx = max_idx[0] if len(
-                                    max_idx) > 0 else 200
-                                motions[i, :max_idx, ...] = normalize_coords_motions(
-                                    motions[i, :max_idx, ...])
+    # print(data)
+    labelfile = np.array(data)
+    # print(ifile)
 
-                            for i in range(5):
-                                field = action + POE_field + str(i + 1)
-                                label = labels.filter(like=field).values[idx]
-                                if label.size > 0 and not np.isnan(label):
-                                    if False:
-                                        feats = motions[i, ...]
-                                        feats = feats.reshape(
-                                            feats.shape[0], -1)
-                                    else:
-                                        # print(f'cohort: {cohort}, sub: {subject}, leg: {leg}, rep: {i}')
-                                        # print(motions.shape)
-                                        # print(i)
-                                        # print(label)
-                                        # print(field)
-                                        # print(subject)
-                                        # print(action)
-                                        # print(leg)
-                                        # print(cohort)
-                                        # print(motions[i, ...].shape)
-                                        angles = calc_angle(
-                                            motions[i, ...], ANGLES)
-                                        if KPTS.size > 0:
-                                            kpts = motions[i, :,
-                                                           KPTS[:, 0], KPTS[:, 1]].T
-                                        else:
-                                            kpts = np.moveaxis(
-                                                motions[i, :, [], :], 1, 0)
-                                            kpts = kpts.reshape(
-                                                kpts.shape[0], -1)
-                                        feats = np.append(
-                                            kpts, angles, axis=-1)
-                                        if DIFFS.size > 3:
-                                            diffs = calc_diffs(
-                                                motions[i, ...], DIFFS)
-                                            feats = np.append(feats, diffs,
-                                                              axis=-1)
+    for file_name in sorted(os.listdir(path)):
+        # print(file_name)
+        if file_name.endswith('.npy') and not ('TTB' in file_name or 'SHIELD' in file_name):
+            if args.debug:
+                print('new vid')
+                print(file_name)
 
-                                    dataset.append(feats)
-                                    dataset_labels.append(label)
+            fps = int(file_name.split('-')[-1].split('.')[0])
+            orig_filename = file_name.split('/')[0].replace(f'-{fps}.npy', '.mp4')
+            leg = 'R' if '_R_' in orig_filename else 'L'
+            data = np.load(os.path.join(path, file_name))
+            data = resample(data, fps / args.rate)
+            b, a = scipy.signal.butter(4, 0.2)
+            data = scipy.signal.filtfilt(b, a, data, axis=0)
+            data = normalize_coords(data)
+            meta = orig_filename.split('.')[0].split('_')
+            rep = meta[-1]
+            ind = meta.index(leg)
+            key = '_'.join(meta[:ind])
+            # print(key)
+            try:
+                subj_ind = ind_map[key]
+            except KeyError:
+                ind_map[key] = q
+                subj_ind = q
+                q += 1
+            # label_ind = subj_ind = np.where(labelfile[:,[1,2]] ==
+            #                     [orig_filename, full_POE[poe_index]])
+            # print(label_ind)
+            # # print(labelfile[:,[1,2]])
+            # print([orig_filename, full_POE[poe_index]])
+            label = None
+            for row in labelfile:
+                if row[1] == orig_filename and row[2] == full_POE[poe_index]:
+                    label = int(row[3])
+                    break
+            # subj_ind = np.where(labelfile[:,[1,2]] ==
+            #                     [orig_filename, full_POE[poe_index]])[0][0]
+            # print(subj_ind)
 
-                                    if args.info_file:
-                                        ifile.write('{},{},{},{},{},{}\n'.format(
-                                            k, glob_subject_nbr, i, subject, leg, cohort))
-                                    k += 1
+            # print(label)
+            if label is None:
+                print(orig_filename, full_POE[poe_index])
+            # print(subj_ind)
 
-                    if str(labels.values[idx, 1]).endswith((leg, '0.0',
-                                                            '1.0', '2.0')):
-                        glob_subject_nbr += 1
+            angles = calc_angle(data, ANGLES)
+
+            if KPTS.size > 0:
+                kpts = data[:, KPTS[:, 0], KPTS[:, 1]]
+            else:
+                kpts = np.moveaxis(data[:, [], :], 1, 0)
+                kpts = kpts.reshape(kpts.shape[0], -1)
+
+            feats = np.append(kpts, angles, axis=-1)
+            if DIFFS.size > 3:
+                diffs = calc_diffs(data, DIFFS)
+                feats = np.append(feats, diffs, axis=-1)
+
+            pad = 200 - feats.shape[0]
+            feats = np.pad(feats, ((0, pad), (0, 0)), 'constant',
+                           constant_values=-1000)
+
+            dataset.append(feats)
+            dataset_labels.append(label)
+
+            if ifile is not None:
+                ifile.write('{},{},{},{},{},{},{}\n'.format(k, subj_ind, rep,
+                                                         subj_ind, leg,
+                                                         key, orig_filename))
+
+                k += 1
+
 
     dataset_labels = np.array(dataset_labels)
     dataset = np.array(dataset)
@@ -443,9 +426,6 @@ def main(args):
     if args.info_file:
         np.savez(save_path, mts=dataset, labels=dataset_labels)
         ifile.close()
-        # lit_names = np.delete(lit_names, lit_idx)
-        # print('Names left: {}'.format(lit_names.size))
-        # np.save(NAME_PATH, lit_names)
 
 
 if __name__ == '__main__':

@@ -413,8 +413,7 @@ def main(args):
                                                          key, orig_filename))
 
                 k += 1
-    
-
+                
     dataset_labels = np.array(dataset_labels)
     dataset = np.array(dataset)
     print(dataset.shape)
