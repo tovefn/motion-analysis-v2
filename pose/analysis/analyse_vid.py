@@ -3,7 +3,7 @@ from argparse import ArgumentParser, ArgumentTypeError
 
 import cv2
 from mmdet.apis import inference_detector, init_detector, show_result_pyplot
-
+import mmcv
 from mmpose.apis import (inference_top_down_pose_model, init_pose_model,
                          vis_pose_result)
 
@@ -20,7 +20,7 @@ def box_check(img, folder_box, show_box=False, device='cpu'):
     det_config = folder_box +\
         'configs/faster_rcnn/faster_rcnn_r50_fpn_1x_coco.py'
     det_model = folder_box +\
-        'checkpoints/faster_rcnn_r50_fpn_1x_coco_20200130-047c8118.pth'
+        'checkpoints/faster_rcnn_r50_caffe_fpn_mstrain_1x_coco-5324cff8.pth'
     det_model = init_detector(det_config, det_model, device=device)
     # cv2.imshow('Image', img)
     print('loaded detection model')
