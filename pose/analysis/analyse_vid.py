@@ -4,8 +4,7 @@ from argparse import ArgumentParser, ArgumentTypeError
 import cv2
 from mmdet.apis import inference_detector, init_detector, show_result_pyplot
 
-from mmpose.apis import (inference_top_down_pose_model, init_pose_model,
-                         vis_pose_result)
+from mmpose.apis import inference_top_down_pose_model, init_pose_model, vis_pose_result
 
 import time
 import numpy as np
@@ -18,9 +17,9 @@ def box_check(img, folder_box, show_box=False, device='cpu'):
     # det_config = '/home/filipkr/Documents/xjob/mmpose/mmdetection/' +\
     #    'configs/faster_rcnn/faster_rcnn_r50_fpn_1x_coco.py'
     det_config = folder_box +\
-        'configs/faster_rcnn/faster_rcnn_r50_fpn_1x_coco.py'
+        '\\mmdetection-main\\configs\\faster_rcnn\\faster-rcnn_r101_fpn_1x_coco.py'
     det_model = folder_box +\
-        'checkpoints/faster_rcnn_r50_fpn_1x_coco_20200130-047c8118.pth'
+        '\\Kod\\MSc25_ToveNora\\ExjobbToveNora\\extract\\faster_rcnn_r101_fpn_1x_coco_20200130-047c8118.pth'
     det_model = init_detector(det_config, det_model, device=device)
     # cv2.imshow('Image', img)
     print('loaded detection model')
@@ -81,9 +80,9 @@ def check_pose4_flip180(pose_model, img, rotate, bbox, args, size):
 
 def re_est_bbox(img, folder_box, flip90, flip180, flip2right, device='cpu'):
     det_config = folder_box +\
-        'configs/faster_rcnn/faster_rcnn_r50_fpn_1x_coco.py'
+        'configs\\faster_rcnn\\faster_rcnn_r50_fpn_1x_coco.py'
     det_model = folder_box +\
-        'checkpoints/faster_rcnn_r50_fpn_1x_coco_20200130-047c8118.pth'
+        'checkpoints\\faster_rcnn_r50_fpn_1x_coco_20200130-047c8118.pth'
     det_model = init_detector(det_config, det_model, device=device)
 
     if flip90:
