@@ -72,7 +72,7 @@ def check_pose4_flip180(pose_model, img, rotate, bbox, args, size):
     if rotate:
         img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
 
-    pose = inference_top_down_pose_model(pose_model, img, bbox,
+    pose = inference_topdown(pose_model, img, bbox,
                                          bbox_thr=args.box_thr,
                                          format='xyxy',
                                          dataset=dataset)
@@ -184,7 +184,7 @@ def loop(args, rotate, fname, bbox, pose_model, flipped=False,
         if frame % args.skip_rate == 0:
             # test a single image, with a list of bboxes.
             # print("before")
-            pose_results = inference_top_down_pose_model(pose_model, img,
+            pose_results = inference_topdown(pose_model, img,
                                                          bbox,
                                                          bbox_thr=args.box_thr,
                                                          format='xyxy',
@@ -313,7 +313,7 @@ def start(args):
         save_out_video = True
         print('save path: {0}'.format(args.out_video_root))
 
-    pose_model = init_pose_model(args.pose_config, args.pose_checkpoint,
+    pose_model = visualize(args.pose_config, args.pose_checkpoint,
                                  device=args.device)
     print('loaded pose model')
 
