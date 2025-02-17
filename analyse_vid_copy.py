@@ -9,8 +9,8 @@ from mmdet.registry import VISUALIZERS
 import mmengine
 
 import mmcv
-from mmpose.apis import (inference_top_down_pose_model, init_pose_model,
-                         vis_pose_result)
+from mmpose.apis import (inference_topdown, init_model,
+                         visualize)
 
 import time
 import numpy as np
@@ -232,7 +232,7 @@ def loop(args, rotate, fname, bbox, pose_model, flipped=False,
         else:
             pose_results = prev_pose
 
-        vis_img = vis_pose_result(pose_model, img, pose_results,
+        vis_img = visualize(pose_model, img, pose_results,
                                   dataset=dataset, kpt_score_thr=args.kpt_thr,
                                   show=False)
 
@@ -403,8 +403,8 @@ def main():
     Using mmdet to detect the human.
     """
     parser = ArgumentParser()
-    parser.add_argument('pose_config', help='Config file for pose')
-    parser.add_argument('pose_checkpoint', help='Checkpoint file for pose')
+    parser.add_argument('--pose_config', help='Config file for pose')
+    parser.add_argument('--pose_checkpoint', help='Checkpoint file for pose')
     parser.add_argument('--video-path', type=str, help='Video path')
     parser.add_argument('--show', type=str2bool, nargs='?',
                         default=False, help="show results.")
