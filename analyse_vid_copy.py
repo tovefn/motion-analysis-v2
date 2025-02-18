@@ -12,35 +12,38 @@ import mmcv
 from mmpose.apis import (inference_topdown, init_model,
                          visualize)
 
+import torch
+
 import time
 import numpy as np
 
 import matplotlib.pyplot as plt
 
 
-def box_check(img, folder_box, show_box=False, device='cpu'):
+def box_check(args, img, folder_box, show_box=False, device='cpu'):
     flip = False
     # det_config = '/home/filipkr/Documents/xjob/mmpose/mmdetection/' +\
     #    'configs/faster_rcnn/faster_rcnn_r50_fpn_1x_coco.py'
     det_config = folder_box +\
-        'configs\_base_\datasets\coco_detection.py'
-        #'configs/faster_rcnn/faster_rcnn_r50_fpn_1x_coco.py'
-    det_model = folder_box +\
+        'configs/faster_rcnn/faster_rcnn_r50_fpn_1x_coco.py'
+    det_checkpoint = folder_box +\
         'checkpoints/faster_rcnn_r50_caffe_fpn_mstrain_1x_coco-5324cff8.pth'
-    det_model = init_detector(det_config, det_model, device=device)
+    det_model = init_detector(args.det_config, args.det_checkpoint, device=device)
     # cv2.imshow('Image', img)
     print('loaded detection model')
     det_results = inference_detector(det_model, img)
+
     # print(det_results)
     # bbox = det_results[0]
     # print(det_results)
+
     print(img.shape)
-    print(det_results[0].shape)
+    print(det_results.pred_instances.bboxes.shape)
     print(img)
     print(np.sum(img))
     plt.imshow(img)
     plt.show()
-    bbox = np.expand_dims(np.array(det_results[0])[0, :], axis=0)
+    bbox = np.expand_dims(det_results.pred_instances.bboxes[0].cpu().numpy(), axis=0)
     bbox[0, 2:4] = bbox[0, 2:4] + 100
     bbox[0, 4] = 1
     # print(bbox)
@@ -58,15 +61,15 @@ def box_check(img, folder_box, show_box=False, device='cpu'):
         visualizer.dataset_meta = det_model.dataset_meta
         visualizer.add_datasample(name="detection", image=img, data_sample=det_results, draw_gt=False, show=True)
 
-
-
     bbox = np.array(bbox)
 
     return bbox, flip
 
 
-def check_pose4_flip180(pose_model, img, rotate, bbox, args, size):
-    dataset = pose_model.cfg.data['test']['type']
+def check_pose4_flip180(pose_model, folder_box, img, rotate, bbox, args, size, device='cpu'):
+    dataset = pose_model.cfg.test_dataloader.dataset.type
+
+    pose_model = init_model(args.pose_config, args.pose_checkpoint, device=device)
 
     print(bbox)
     if rotate:
@@ -92,9 +95,9 @@ def check_pose4_flip180(pose_model, img, rotate, bbox, args, size):
 def re_est_bbox(img, folder_box, flip90, flip180, flip2right, device='cpu'):
     det_config = folder_box +\
         'configs/faster_rcnn/faster_rcnn_r50_fpn_1x_coco.py'
-    det_model = folder_box +\
+    det_checkpoint = folder_box +\
         'checkpoints/faster_rcnn_r50_fpn_1x_coco_20200130-047c8118.pth'
-    det_model = init_detector(det_config, det_model, device=device)
+    det_model = init_detector(det_config, det_checkpoint, device=device)
 
     if flip90:
         img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
@@ -156,7 +159,7 @@ def loop(args, rotate, fname, bbox, pose_model, flipped=False,
     videoWriter = cv2.VideoWriter(fname, fourcc, fps, size)
     poses = np.zeros((frames,
                       pose_model.cfg.channel_cfg['num_output_channels'], 2))
-    dataset = pose_model.cfg.data['test']['type']
+    dataset = pose_model.cfg.test_dataloader.dataset.type
 
     # skip_ratio = 1
 
@@ -232,9 +235,18 @@ def loop(args, rotate, fname, bbox, pose_model, flipped=False,
         else:
             pose_results = prev_pose
 
-        vis_img = visualize(pose_model, img, pose_results,
-                                  dataset=dataset, kpt_score_thr=args.kpt_thr,
-                                  show=False)
+        if pose_results:  # Check if pose_results is not empty
+            #vis_img = visualize(pose_model, img, pose_results,
+            #            dataset=dataset, kpt_score_thr=args.kpt_thr,
+            #            show=False)
+
+            vis_img = pose_model.visualizer.add_datasample(
+            "pose_estimation", img, pose_results,
+            draw_gt=False, draw_bbox=True, show=False
+)
+
+        else:
+            vis_img = img  # Just keep the original frame if no pose is detected
 
         if args.show and frame % args.skip_rate == 0:
             print(f'args show: {args.show}')
@@ -288,6 +300,8 @@ def loop(args, rotate, fname, bbox, pose_model, flipped=False,
 
 
 def start(args):
+    device = torch.device("cpu")
+
     print(args.video_path)
     cap = cv2.VideoCapture(args.video_path)
     print('loaded video...')
@@ -313,11 +327,11 @@ def start(args):
         save_out_video = True
         print('save path: {0}'.format(args.out_video_root))
 
-    pose_model = visualize(args.pose_config, args.pose_checkpoint,
-                                 device=args.device)
+    pose_model = init_model(args.pose_config, args.pose_checkpoint, device='cpu')
     print('loaded pose model')
 
-    dataset = pose_model.cfg.data['test']['type']
+    dataset = pose_model.cfg.test_dataloader.dataset.type
+
     print(dataset)
 
     mod_used = pose_model.cfg.model['backbone']['type']
@@ -357,7 +371,7 @@ def start(args):
 
     print(fname)
 
-    bbox, rotate = box_check(
+    bbox, rotate = box_check(args,
         img, args.folder_box, device=args.device, show_box=args.show_box)
 
     if rotate:
@@ -369,8 +383,8 @@ def start(args):
 
     cap.release()
 
-    rotate_180, bbox = check_pose4_flip180(pose_model, img, rotate,
-                                           bbox, args, size)
+    rotate_180, bbox = check_pose4_flip180(pose_model, args.folder_box, img, rotate,
+                                           bbox, args, size, device=args.device)
 
     #
     # if rotate or rotate_180:
@@ -401,10 +415,13 @@ def main():
     """Visualize the demo images.
 
     Using mmdet to detect the human.
+    Using mmpose for human pose estimation
     """
     parser = ArgumentParser()
     parser.add_argument('--pose_config', help='Config file for pose')
     parser.add_argument('--pose_checkpoint', help='Checkpoint file for pose')
+    parser.add_argument('--det_config', help='Config file for detection')
+    parser.add_argument('--det_checkpoint', help='Checkpoint file for detection')
     parser.add_argument('--video-path', type=str, help='Video path')
     parser.add_argument('--show', type=str2bool, nargs='?',
                         default=False, help="show results.")
